@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 6864414041197339406}
   - component: {fileID: 1470845394182878405}
   - component: {fileID: 789304686325451367}
-  - component: {fileID: 5573578522663618816}
   m_Layer: 0
   m_Name: Star
   m_TagString: Untagged
@@ -138,22 +137,3 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
---- !u!114 &5573578522663618816
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2139686671206289527}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3b4ded1e9a1a94c1eaee26f84c1fe6ae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  starColors:
-  - {r: 0.5764507, g: 0.9622642, b: 0.95470846, a: 0}
-  - {r: 1, g: 1, b: 1, a: 0}
-  - {r: 0.6603774, g: 0.21036638, b: 0.17132434, a: 0}
-  - {r: 0.9150943, g: 0.81344247, b: 0.13381095, a: 0}
-  - {r: 0.9339623, g: 0.587225, b: 0.110137045, a: 0}
-  lightComponent: {fileID: 789304686325451367}

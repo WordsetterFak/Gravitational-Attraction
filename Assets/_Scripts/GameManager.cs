@@ -8,12 +8,16 @@ public class GameManager : MonoBehaviour
     [SerializeField] private float maxSpawnRange;
     [SerializeField] private float cameraSizeOffset;
     [SerializeField] private float gravitationalConstant;
+    [SerializeField] private float gravitationalConstantIncreasePerSecond;
     [SerializeField] private Vector2 massRange;
+    [SerializeField] private Vector2 initialSpeedRange;
     [SerializeField] private GameObject starPrefab;
 
     private GameObject[] stars;
+    private Vector2[] forces;
     private Vector2[] velocities;
     private float[] masses;
+    private Vector2[] collisionPairs;
 
     private float radius = 1;
 
@@ -21,14 +25,28 @@ public class GameManager : MonoBehaviour
     {
         stars = new GameObject[starCount];
         velocities = new Vector2[starCount];
+        forces = new Vector2[starCount];
         masses = new float[starCount];
+        collisionPairs = new Vector2[starCount];
 
-        for(int i = 0; i < starCount; i++)
+        SpawnStars();
+        Camera.main.orthographicSize = maxSpawnRange + cameraSizeOffset;
+    }
+
+    private void FixedUpdate()
+    {
+        SimulationPhysicsStep();
+        gravitationalConstant += gravitationalConstantIncreasePerSecond * Time.fixedDeltaTime;
+    }
+
+    private void SpawnStars()
+    {
+        for (int i = 0; i < starCount; i++)
         {
             Vector2 initialPosition = maxSpawnRange * Random.insideUnitCircle;
             bool overlap = false;
 
-            for(int j = 0; j < i; j++)
+            for (int j = 0; j < i; j++)
             {
                 if ((initialPosition - (Vector2)stars[j].transform.position).magnitude <= radius)
                 {
@@ -46,55 +64,98 @@ public class GameManager : MonoBehaviour
             GameObject newPlanet = Instantiate(starPrefab);
             newPlanet.transform.position = initialPosition;
             stars[i] = newPlanet;
-            velocities[i] = Vector2.zero;
+            float initialSpeed = Random.Range(initialSpeedRange.x, initialSpeedRange.y);
+            velocities[i] = initialSpeed * Random.insideUnitCircle.normalized;
             masses[i] = Random.Range(massRange.x, massRange.y);
         }
-
-        Camera.main.orthographicSize = maxSpawnRange + cameraSizeOffset;
     }
 
-    private void FixedUpdate()
+    private void SimulationPhysicsStep()
     {
+        forces = new Vector2[starCount];  // Reset previous forces
+
+        collisionPairs = new Vector2[starCount];  // Reset previous collisions
+        int collisionCount = 0;
+
+        // Calculate gravitational and reaction forces enacted on each planet
         for (int i = 0; i < stars.Length; i++)
         {
             if (stars[i] == null)
             {
+                // In case star i was destroyed
                 continue;
             }
 
-            Vector2 acceleration = Vector2.zero;
-            bool collision = false;
+            int? collisionIndex = null;
 
             for (int j = 0; j < stars.Length; j++)
             {
                 if (i == j || stars[j] == null)
                 {
+                    // Prevent star interacting with itself
                     continue;
                 }
 
                 Vector2 direction = stars[j].transform.position - stars[i].transform.position;
                 Vector2 directionNormalized = direction.normalized;
 
-                if(direction.magnitude <= radius)
+                if (direction.magnitude <= radius)
                 {
-                    Destroy(stars[j]);
-                    collision = true;
+                    collisionIndex = j;
                     break;
                 }
 
                 float squareDistance = direction.magnitude * direction.magnitude;
-                float magnitude = (gravitationalConstant * masses[i] * masses[j]) / squareDistance;
-                acceleration += magnitude * directionNormalized;
+                float gravitationForceMagnitude = (gravitationalConstant * masses[i] * masses[j]) / squareDistance;
+                Vector2 gravitationalForce = gravitationForceMagnitude * directionNormalized;
+
+                forces[i] += gravitationalForce;
+                forces[j] += -gravitationalForce;  // Newton's 3rd Law 
             }
 
-            if (collision)
+
+            if (collisionIndex != null)
             {
-                Destroy(stars[i]);
+                collisionPairs[collisionCount] = new Vector2(i, (int)collisionIndex);
+                collisionCount++;
+                break;
+            }
+        }
+
+        // Resolve collisions
+        for (int i = 0; i < collisionPairs.Length; i++)
+        {
+            Vector2 collisionPair = collisionPairs[i];  // 2 Integers
+
+            if (collisionPair == Vector2.zero)
+            {
+                // Reaching a (0, 0) pair means that there are no more collisions
                 break;
             }
 
-            velocities[i] += acceleration * Time.fixedDeltaTime;
-            stars[i].transform.position += (Vector3) velocities[i] * Time.fixedDeltaTime;
+            Collide((int)collisionPair.x, (int)collisionPair.y);
         }
+
+        // Calculate the new positions using Semi-Implicit Euler Method
+        for (int i = 0; i < stars.Length; i++)
+        {
+            if (stars[i] == null)
+            {
+                // In case star i was just destroyed
+                continue;
+            }
+
+            Vector2 acceleration = forces[i] / masses[i];
+
+            velocities[i] += acceleration * Time.fixedDeltaTime;
+            stars[i].transform.position += (Vector3)velocities[i] * Time.fixedDeltaTime;
+        }
+
+    }
+
+    private void Collide(int i, int j)
+    {
+        Destroy(stars[i]);
+        Destroy(stars[j]);
     }
 }
