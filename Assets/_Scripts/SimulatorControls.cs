@@ -11,7 +11,7 @@ public class SimulatorControls : MonoBehaviour
     {
         Vector3 screenCursorPosition = Input.mousePosition + Camera.main.orthographicSize * Vector3.forward;
         Vector3 viewportCursorPosition = Camera.main.ScreenToViewportPoint(screenCursorPosition);
-        Vector3 worldCursorPosition = Camera.main.ScreenToWorldPoint(screenCursorPosition);
+        // Vector3 worldCursorPosition = Camera.main.ScreenToWorldPoint(screenCursorPosition);
 
         MoveCamera(viewportCursorPosition);
     }

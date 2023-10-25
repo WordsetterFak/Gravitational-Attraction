@@ -9,6 +9,9 @@ public class GameManager : MonoBehaviour
     [SerializeField] private float cameraSizeOffset;
     [SerializeField] private float gravitationalConstant;
     [SerializeField] private float gravitationalConstantIncreasePerSecond;
+    [SerializeField] private float maxGravitationConstant;
+    [SerializeField] private float starSurvivalMassRatio;
+    [SerializeField] [Range(0, 1)] private float collisionMassRetention;
     [SerializeField] private Vector2 massRange;
     [SerializeField] private Vector2 initialSpeedRange;
     [SerializeField] private GameObject starPrefab;
@@ -36,7 +39,10 @@ public class GameManager : MonoBehaviour
     private void FixedUpdate()
     {
         SimulationPhysicsStep();
-        gravitationalConstant += gravitationalConstantIncreasePerSecond * Time.fixedDeltaTime;
+
+        float gravitationalConstantIncrease = gravitationalConstantIncreasePerSecond * Time.fixedDeltaTime;
+        float newGravitationalConstant = gravitationalConstant + gravitationalConstantIncrease;
+        gravitationalConstant = Mathf.Clamp(newGravitationalConstant, -maxGravitationConstant, maxGravitationConstant);
     }
 
     private void SpawnStars()
@@ -105,8 +111,7 @@ public class GameManager : MonoBehaviour
                     break;
                 }
 
-                float squareDistance = direction.magnitude * direction.magnitude;
-                float gravitationForceMagnitude = (gravitationalConstant * masses[i] * masses[j]) / squareDistance;
+                float gravitationForceMagnitude = (gravitationalConstant * masses[i] * masses[j]) / direction.sqrMagnitude;
                 Vector2 gravitationalForce = gravitationForceMagnitude * directionNormalized;
 
                 forces[i] += gravitationalForce;
@@ -155,7 +160,33 @@ public class GameManager : MonoBehaviour
 
     private void Collide(int i, int j)
     {
-        Destroy(stars[i]);
-        Destroy(stars[j]);
+
+        if (masses[i] < masses[j])
+        {
+            int temp = i;
+            i = j;
+            j = temp;
+        }
+
+        float massRatio = masses[i] / masses[j];
+
+        if (massRatio < starSurvivalMassRatio)
+        {
+            Destroy(stars[i]);
+            Destroy(stars[j]);
+        }
+        else
+        {
+            // Transfer mass and preserve kinetic Energy
+            float survivingStarkineticEnergy = 1 / 2 * masses[i] * velocities[i].sqrMagnitude;
+            masses[i] = masses[i] * collisionMassRetention + masses[j] * collisionMassRetention;
+            float destroyedStarKineticEnergy = 1 / 2 * masses[j] * velocities[j].sqrMagnitude;
+            float newKineticEnergy = survivingStarkineticEnergy + destroyedStarKineticEnergy * collisionMassRetention;
+            float newSpeed = Mathf.Sqrt(2 * newKineticEnergy / masses[i]);
+            velocities[i] = velocities[i].normalized * newSpeed;
+
+            Destroy(stars[j]);
+        }
+
     }
 }

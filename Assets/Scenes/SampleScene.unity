@@ -468,10 +468,13 @@ MonoBehaviour:
   starCount: 200
   maxSpawnRange: 500
   cameraSizeOffset: -400
-  gravitationalConstant: 4
-  gravitationalConstantIncreasePerSecond: 0.008
+  gravitationalConstant: 5
+  gravitationalConstantIncreasePerSecond: 0.025
+  maxGravitationConstant: 15
+  starSurvivalMassRatio: 2
+  collisionMassRetention: 0.75
   massRange: {x: 1, y: 100}
-  initialSpeedRange: {x: 0, y: 10}
+  initialSpeedRange: {x: 0, y: 14}
   starPrefab: {fileID: 2139686671206289527, guid: 7b7421ec5f06a454aa4e71d314a5af20, type: 3}
 --- !u!4 &1511229664
 Transform:
