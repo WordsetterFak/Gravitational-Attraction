@@ -17,8 +17,19 @@ public class SimulatorManager : MonoBehaviour
     [SerializeField] private Vector2 massRange;
     [SerializeField] private Vector2 initialSpeedRange;
     [SerializeField] private GameObject starPrefab;
+    [SerializeField] private int subdivisions;
 
-    private int[,] grid;
+    private int cellCount;
+    private Vector2 extremeX;
+    private Vector2 extremeY;
+    private Vector2[] starsGridCoordinates;
+    private int[,] cellStars;
+    private int[] cellStarCounts;
+    private float[] cellWeightedXs;
+    private float[] cellWeightedYs;
+    private float[] cellMasses;
+    private Vector2[] cellCentersOfMass;
+    private bool[] cellHasCachedCenterOfMass;
     private GameObject[] stars;
     private Vector2[] forces;
     private Vector2[] velocities;
@@ -26,6 +37,7 @@ public class SimulatorManager : MonoBehaviour
     private Vector2[] collisionPairs;
 
     private float radius = 1;
+    private bool run = false;
 
     private void Awake()
     {
@@ -86,53 +98,36 @@ public class SimulatorManager : MonoBehaviour
 
     private void SimulationPhysicsStep()
     {
+        if (!run)
+        {
+            return;
+        }
+
         forces = new Vector2[starCount];  // Reset previous forces
 
         collisionPairs = new Vector2[starCount];  // Reset previous collisions
         int collisionCount = 0;
 
-        // Calculate gravitational and reaction forces enacted on each planet
-        for (int i = 0; i < stars.Length; i++)
+        // Insert all stars in their responding cells and prepare data for the next step
+        for(int i = 0; i < stars.Length; i++)
         {
-            if (stars[i] == null)
-            {
-                // In case star i was destroyed
-                continue;
-            }
+            Vector2 starPosition = stars[i].transform.position;
+            float starMass = masses[i];
 
-            int? collisionIndex = null;
+            Vector2 cellCoordinates = CalculateGridCoordinates(starPosition);
+            int cellHash = GetCellHash((int)cellCoordinates.x, (int)cellCoordinates.y);
 
-            for (int j = 0; j < stars.Length; j++)
-            {
-                if (i == j || stars[j] == null)
-                {
-                    // Prevent star interacting with itself
-                    continue;
-                }
+            cellMasses[cellHash] += starMass;
+            cellWeightedXs[cellHash] += starPosition.x * starMass;  // m1*x1 + ... + mn*xn
+            cellWeightedYs[cellHash] += starPosition.y * starMass;  // m1*y1 + ... + mn*yn
+            starsGridCoordinates[i] = cellCoordinates;
+            cellStars[cellHash, cellStarCounts[cellHash]] = i;
+            cellStarCounts[cellHash]++;
+        }
 
-                Vector2 direction = stars[j].transform.position - stars[i].transform.position;
-                Vector2 directionNormalized = direction.normalized;
-
-                if (direction.magnitude <= radius)
-                {
-                    collisionIndex = j;
-                    break;
-                }
-
-                float gravitationForceMagnitude = (gravitationalConstant * masses[i] * masses[j]) / direction.sqrMagnitude;
-                Vector2 gravitationalForce = gravitationForceMagnitude * directionNormalized;
-
-                forces[i] += gravitationalForce;
-                forces[j] += -gravitationalForce;  // Newton's 3rd Law 
-            }
-
-
-            if (collisionIndex != null)
-            {
-                collisionPairs[collisionCount] = new Vector2(i, (int)collisionIndex);
-                collisionCount++;
-                break;
-            }
+        for(int i = 0; i < stars.Length; i++)
+        {
+             
         }
 
         // Resolve collisions
@@ -164,6 +159,93 @@ public class SimulatorManager : MonoBehaviour
             stars[i].transform.position += (Vector3)velocities[i] * Time.fixedDeltaTime;
         }
 
+    }
+
+    private int GetCellHash(int cellX, int cellY)
+    {
+        return cellX + cellY * subdivisions;
+    }
+
+    private Vector2 CalculateGridCoordinates(Vector2 worldposition)
+    {
+        float universeWidth = extremeX.y - extremeX.x;
+        float universeHeight = extremeY.y - extremeY.x;
+        Vector2 universeSize = new Vector2(universeWidth, universeHeight);
+        Vector2 cellSize = universeSize / subdivisions;
+
+        int cellX = (int)(universeSize.x / worldposition.x);
+        int cellY = (int)(universeSize.y / worldposition.y);
+
+        return new Vector2(cellX, cellY);
+    }
+
+    private int[] GetNeighboringCellHashes(int cellHash)
+    {
+        int maxNeighbors = 8;  // In a 2 dimensional
+        int[] neighboringCellHashes = new int[maxNeighbors];
+        int index = 0;
+
+        for (int i = -1; i <= 1; i++)
+        {
+            for (int j = -1; j <= 1; j++)
+            {
+                int neighboringHash = cellHash + i * subdivisions + j;
+
+                // Left column hashes will be equal to 0 mod subdivisions
+                // Right column hashes will be equal to subdivision - 1 mod subdivisions
+                float leftHashDivision = cellHash / subdivisions;
+                float rightHashDivision = (cellHash + 1) / subdivisions;
+                float leftCellHashRemainder = leftHashDivision - Mathf.Floor(leftHashDivision);
+                float rightCellHashRemainder = rightHashDivision - Mathf.Floor(rightHashDivision);
+
+                if (neighboringHash < 0 || neighboringHash >= cellCount)
+                {
+                    // Hash doesn't correspond to any cell, occurs when
+                    // the given cell is in the top/bottom row
+                    continue;
+                }
+                else if (leftCellHashRemainder == 0 && j == -1)
+                {
+                    // Hash doesn't correspond to any cell, occurs when
+                    // the given cell is in the left column
+                    continue;
+                }
+                else if (rightCellHashRemainder == 0 && j == 1)
+                {
+                    // Hash doesn't correspond to any cell, occurs when
+                    // the given cell is in the right column
+                    continue;
+                }
+
+                neighboringCellHashes[index] = neighboringHash;
+                index++;
+            }
+        }
+
+        int[] filteredNeighboringCellHashes = new int[index];
+        for (int i = 0; i < index; i++)
+        {
+            filteredNeighboringCellHashes[i] = neighboringCellHashes[i];
+        }
+
+        return filteredNeighboringCellHashes;
+    }
+
+    private Vector2 CalculateCellCenterOfMass(int cellHash)
+    {
+        if (!cellHasCachedCenterOfMass[cellHash])
+        {
+            float cellMass = cellMasses[cellHash];
+
+            float centerOfMassX = cellWeightedXs[cellHash] / cellMass;
+            float centerOfMassY = cellWeightedYs[cellHash] / cellMass;
+            Vector2 centerOfMass = new Vector2(centerOfMassX, centerOfMassY);
+
+            cellCentersOfMass[cellHash] = centerOfMass;
+            cellHasCachedCenterOfMass[cellHash] = true;
+        }
+
+        return cellCentersOfMass[cellHash];
     }
 
     private void Collide(int i, int j)
