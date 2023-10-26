@@ -4,8 +4,17 @@ using UnityEngine;
 
 public class SimulatorControls : MonoBehaviour
 {
+    public static SimulatorControls Instance { get; private set; }
+
     [SerializeField] private float cameraMovementSpeed;
     [SerializeField] [Range(0, .5f)] private float distanceNormalizedMoveTrigger;
+    [SerializeField] private Vector2 zoomRange;
+    [SerializeField] private float zoomChangeSensitivity;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
 
     private void Update()
     {
@@ -14,6 +23,17 @@ public class SimulatorControls : MonoBehaviour
         // Vector3 worldCursorPosition = Camera.main.ScreenToWorldPoint(screenCursorPosition);
 
         MoveCamera(viewportCursorPosition);
+
+        if (Input.GetKey(KeyCode.Z))
+        {
+            ZoomIn();
+        }
+
+        if (Input.GetKey(KeyCode.X))
+        {
+            ZoomOut();
+        }
+
     }
 
     private void MoveCamera(Vector3 viewportCursorPosition)
@@ -35,6 +55,25 @@ public class SimulatorControls : MonoBehaviour
 
         float moveMagnitude = cameraMovementSpeed * Time.deltaTime;
         Camera.main.transform.position += (Vector3)(moveMagnitude * directionNormalized);
+    }
+
+    private void ZoomIn()
+    {
+        ChangeCameraZoom(true);
+    }
+
+    private void ZoomOut()
+    {
+        ChangeCameraZoom(false);
+    }
+
+    private void ChangeCameraZoom(bool zoomIn)
+    {
+        int sign = zoomIn ? -1 : 1;
+        float zoomChange = sign * Time.deltaTime * zoomChangeSensitivity;
+        float newZoom = Camera.main.orthographicSize + zoomChange;
+        float newZoomClamped = Mathf.Clamp(newZoom, zoomRange.x, zoomRange.y);
+        Camera.main.orthographicSize = newZoomClamped;
     }
 
 }

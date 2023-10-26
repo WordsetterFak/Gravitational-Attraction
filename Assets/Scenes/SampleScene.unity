@@ -151,6 +151,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cameraMovementSpeed: 80
   distanceNormalizedMoveTrigger: 0.4
+  zoomRange: {x: 0.1, y: 400}
+  zoomChangeSensitivity: 40
 --- !u!4 &99999092
 Transform:
   m_ObjectHideFlags: 0
@@ -447,7 +449,7 @@ GameObject:
   - component: {fileID: 1511229664}
   - component: {fileID: 1511229663}
   m_Layer: 0
-  m_Name: GameManager
+  m_Name: SimulatorManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

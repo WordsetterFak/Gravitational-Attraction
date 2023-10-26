@@ -2,8 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class GameManager : MonoBehaviour
+public class SimulatorManager : MonoBehaviour
 {
+    public static SimulatorManager Instance { get; private set; }
+
     [SerializeField] private int starCount;
     [SerializeField] private float maxSpawnRange;
     [SerializeField] private float cameraSizeOffset;
@@ -16,6 +18,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Vector2 initialSpeedRange;
     [SerializeField] private GameObject starPrefab;
 
+    private int[,] grid;
     private GameObject[] stars;
     private Vector2[] forces;
     private Vector2[] velocities;
@@ -23,6 +26,11 @@ public class GameManager : MonoBehaviour
     private Vector2[] collisionPairs;
 
     private float radius = 1;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
 
     private void Start()
     {
