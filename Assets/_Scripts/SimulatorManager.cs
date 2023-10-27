@@ -12,8 +12,6 @@ public class SimulatorManager : MonoBehaviour
     [SerializeField] private float gravitationalConstant;
     [SerializeField] private float gravitationalConstantIncreasePerSecond;
     [SerializeField] private float maxGravitationConstant;
-    [SerializeField] private float starSurvivalMassRatio;
-    [SerializeField] [Range(0, 1)] private float collisionMassRetention;
     [SerializeField] private Vector2 massRange;
     [SerializeField] private Vector2 initialSpeedRange;
     [SerializeField] private GameObject starPrefab;
@@ -93,11 +91,9 @@ public class SimulatorManager : MonoBehaviour
         int[,] cellStars = new int[cellCount, starCount];
         int[] cellStarCount = new int[cellCount];
         int[] starCellHashes = new int[starCount];
-
         Vector2[] collisionPairs = new Vector2[starCount];  // Reset previous collisions
         int collisionCount = 0;
-        print(extremeX);
-        print(extremeY);
+
         for (int i = 0; i < stars.Length; i++)
         {
             if (stars[i] == null)
@@ -180,16 +176,9 @@ public class SimulatorManager : MonoBehaviour
         }
 
         // Resolve collisions
-        for (int i = 0; i < collisionPairs.Length; i++)
+        for (int i = 0; i < collisionCount; i++)
         {
             Vector2 collisionPair = collisionPairs[i];  // 2 Integers
-
-            if (collisionPair == Vector2.zero)
-            {
-                // Reaching a (0, 0) pair means that there are no more collisions
-                break;
-            }
-
             Collide((int)collisionPair.x, (int)collisionPair.y);
         }
 
@@ -228,8 +217,12 @@ public class SimulatorManager : MonoBehaviour
         Vector2 universeSize = new Vector2(universeWidth, universeHeight);
         Vector2 cellSize = universeSize / gridSubdivisions;
 
-        int cellX = (int)(universeSize.x / worldposition.x);
-        int cellY = (int)(universeSize.y / worldposition.y);
+        // Consider a new coordinate system, where the origin was moved
+        Vector2 gridOrigin = new Vector2(extremeX.x, extremeY.x);
+        Vector2 gridOriginPosition = worldposition - gridOrigin;
+
+        int cellX = (int)(gridOriginPosition.x / cellSize.x);
+        int cellY = (int)(gridOriginPosition.y / cellSize.y);
 
         return new Vector2(cellX, cellY);
     }
