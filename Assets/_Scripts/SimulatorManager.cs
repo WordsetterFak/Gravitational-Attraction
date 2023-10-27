@@ -25,6 +25,7 @@ public class SimulatorManager : MonoBehaviour
     private float[] masses;
 
     private float radius = 1;
+    bool run = false;
 
     private void Awake()
     {
@@ -163,7 +164,7 @@ public class SimulatorManager : MonoBehaviour
                     Vector2 gravitationalForce = gravitationForceMagnitude * directionNormalized;
 
                     forces[thisStarIndex] += gravitationalForce;
-                    forces[otherStarIndex] += -gravitationalForce;  // Newton's 3rd Law 
+                    forces[otherStarIndex] -= gravitationalForce;  // Newton's 3rd Law 
                 }
             }
 
@@ -224,13 +225,18 @@ public class SimulatorManager : MonoBehaviour
         int cellX = (int)(gridOriginPosition.x / cellSize.x);
         int cellY = (int)(gridOriginPosition.y / cellSize.y);
 
+        // If given worldposition corresponds to an extreme value
+        // then an incorrect value (gridSubdivisions) is returned
+        cellX = Mathf.Clamp(cellX, 0, gridSubdivisions - 1);
+        cellY = Mathf.Clamp(cellY, 0, gridSubdivisions - 1);
+
         return new Vector2(cellX, cellY);
     }
 
     private Vector2 GetCellGridCoordinates(int cellHash)
     {
         int cellY = Mathf.FloorToInt(cellHash / gridSubdivisions);
-        int cellX = cellHash - cellY;
+        int cellX = cellHash - cellY * gridSubdivisions;
         return new Vector2(cellX, cellY);
     }
 
@@ -251,35 +257,22 @@ public class SimulatorManager : MonoBehaviour
         int index = 0;
 
         // Shift through the 3 rows and columns
-        for (int i = -1; i <= 1; i++)
+        for (int row = -1; row <= 1; row++)
         {
-            if (gridCoordinates.y == 0 && i == -1)
-            {
-                // Prevent top row cells from attempting to find neighbors above them
-                continue;
-            }
 
-            if (gridCoordinates.y == gridSubdivisions - 1 && i == 1)
+            for (int column = -1; column <= 1; column++)
             {
-                // Prevent bottom row cells from attempting to find neigbors below them
-                continue;
-            }
+                Vector2 displacement = new Vector2(row, column);
+                Vector2 neighborGridCoordinates = gridCoordinates + displacement;
 
-            for (int j = -1; j <= 1; j++)
-            {
-                if (gridCoordinates.x == 0  && j == -1)
+                bool rowExists = neighborGridCoordinates.x >= 0 && neighborGridCoordinates.x < gridSubdivisions;
+                bool columnExists = neighborGridCoordinates.y >= 0 && neighborGridCoordinates.y < gridSubdivisions;
+
+                if (rowExists && columnExists)
                 {
-                    // Prevent left column cells from attempting to find neigbors left of them
-                    continue;
+                    neighbors[index] = GetCellHash(neighborGridCoordinates);
                 }
 
-                if (gridCoordinates.x == gridSubdivisions - 1 && j == 1)
-                {
-                    // Prevent right column cells from attempting to find neigbors right of them
-                    continue;
-                }
-
-                neighbors[index] = cellHash + gridSubdivisions * i + j;
                 index++;
             }
         }
