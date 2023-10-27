@@ -467,8 +467,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77ee158f8a99f4470b7eebf931b290d6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  starCount: 2000
-  maxSpawnRange: 500
+  starCount: 1800
+  maxSpawnRange: 600
   cameraSizeOffset: -400
   gravitationalConstant: 5
   gravitationalConstantIncreasePerSecond: 0.025
@@ -476,7 +476,7 @@ MonoBehaviour:
   massRange: {x: 1, y: 100}
   initialSpeedRange: {x: 0, y: 14}
   starPrefab: {fileID: 2139686671206289527, guid: 7b7421ec5f06a454aa4e71d314a5af20, type: 3}
-  gridSubdivisions: 8
+  gridSubdivisions: 10
 --- !u!4 &1511229664
 Transform:
   m_ObjectHideFlags: 0
