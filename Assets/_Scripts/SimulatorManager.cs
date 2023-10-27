@@ -18,12 +18,13 @@ public class SimulatorManager : MonoBehaviour
     [SerializeField] private Vector2 initialSpeedRange;
     [SerializeField] private GameObject starPrefab;
 
-    private int[,] grid;
+    [SerializeField] private int gridSubdivisions;
+    private int cellCount;
+    private Vector2 extremeX, extremeY;
+
     private GameObject[] stars;
-    private Vector2[] forces;
     private Vector2[] velocities;
     private float[] masses;
-    private Vector2[] collisionPairs;
 
     private float radius = 1;
 
@@ -34,11 +35,10 @@ public class SimulatorManager : MonoBehaviour
 
     private void Start()
     {
+        cellCount = gridSubdivisions * gridSubdivisions;
         stars = new GameObject[starCount];
         velocities = new Vector2[starCount];
-        forces = new Vector2[starCount];
         masses = new float[starCount];
-        collisionPairs = new Vector2[starCount];
 
         SpawnStars();
         Camera.main.orthographicSize = maxSpawnRange + cameraSizeOffset;
@@ -81,55 +81,99 @@ public class SimulatorManager : MonoBehaviour
             float initialSpeed = Random.Range(initialSpeedRange.x, initialSpeedRange.y);
             velocities[i] = initialSpeed * Random.insideUnitCircle.normalized;
             masses[i] = Random.Range(massRange.x, massRange.y);
+
+            UpdateExtremePositions(initialPosition);
         }
     }
 
     private void SimulationPhysicsStep()
     {
-        forces = new Vector2[starCount];  // Reset previous forces
+        // Setup local caches
+        Vector2[] forces = new Vector2[starCount];
+        int[,] cellStars = new int[cellCount, starCount];
+        int[] cellStarCount = new int[cellCount];
+        int[] starCellHashes = new int[starCount];
 
-        collisionPairs = new Vector2[starCount];  // Reset previous collisions
+        Vector2[] collisionPairs = new Vector2[starCount];  // Reset previous collisions
         int collisionCount = 0;
-
-        // Calculate gravitational and reaction forces enacted on each planet
+        print(extremeX);
+        print(extremeY);
         for (int i = 0; i < stars.Length; i++)
         {
             if (stars[i] == null)
+            {
+                // Do not index destroyed stars
+                continue;
+            }
+
+            Vector2 starLocation = stars[i].transform.position;
+            Vector2 gridCoordinates = CalculateGridCoordinates(starLocation);
+            int starCellHash = GetCellHash(gridCoordinates);
+            starCellHashes[i] = starCellHash;
+            cellStars[starCellHash, cellStarCount[starCellHash]] = i;
+            cellStarCount[starCellHash] += 1;
+        }
+
+        // Calculate gravitational and reaction forces enacted on each planet
+        for (int thisStarIndex = 0; thisStarIndex < stars.Length; thisStarIndex++)
+        {
+            if (stars[thisStarIndex] == null)
             {
                 // In case star i was destroyed
                 continue;
             }
 
+            Vector2 thisStarPosition = stars[thisStarIndex].transform.position;
+            float thisStarMass = masses[thisStarIndex];
+            int starCellHash = starCellHashes[thisStarIndex];
+            int?[] adjacentCellHashes = GetAdjacentCellHashes(starCellHash);
+
             int? collisionIndex = null;
 
-            for (int j = 0; j < stars.Length; j++)
+            foreach (int? potentialCellHash in adjacentCellHashes)
             {
-                if (i == j || stars[j] == null)
+                if (potentialCellHash == null)
                 {
-                    // Prevent star interacting with itself
+                    // This neighbor does not exist
                     continue;
                 }
 
-                Vector2 direction = stars[j].transform.position - stars[i].transform.position;
-                Vector2 directionNormalized = direction.normalized;
+                int cellHash = (int)potentialCellHash;
 
-                if (direction.magnitude <= radius)
+                for (int j = 0; j < cellStarCount[cellHash]; j++)
                 {
-                    collisionIndex = j;
-                    break;
+                    int otherStarIndex = cellStars[cellHash, j];
+
+                    if (thisStarIndex == otherStarIndex)
+                    {
+                        // Prevent star interacting with itself
+                        continue;
+                    }
+
+                    Vector2 otherStarPosition = stars[otherStarIndex].transform.position;
+                    float otherStarMass = masses[otherStarIndex];
+
+                    Vector2 direction = otherStarPosition - thisStarPosition;
+                    Vector2 directionNormalized = direction.normalized;
+
+                    if (direction.magnitude <= radius)
+                    {
+                        collisionIndex = otherStarIndex;
+                        break;
+                    }
+
+                    float numerator = gravitationalConstant * otherStarMass * thisStarMass;
+                    float gravitationForceMagnitude = numerator / direction.sqrMagnitude;
+                    Vector2 gravitationalForce = gravitationForceMagnitude * directionNormalized;
+
+                    forces[thisStarIndex] += gravitationalForce;
+                    forces[otherStarIndex] += -gravitationalForce;  // Newton's 3rd Law 
                 }
-
-                float gravitationForceMagnitude = (gravitationalConstant * masses[i] * masses[j]) / direction.sqrMagnitude;
-                Vector2 gravitationalForce = gravitationForceMagnitude * directionNormalized;
-
-                forces[i] += gravitationalForce;
-                forces[j] += -gravitationalForce;  // Newton's 3rd Law 
             }
-
 
             if (collisionIndex != null)
             {
-                collisionPairs[collisionCount] = new Vector2(i, (int)collisionIndex);
+                collisionPairs[collisionCount] = new Vector2(thisStarIndex, (int)collisionIndex);
                 collisionCount++;
                 break;
             }
@@ -162,39 +206,120 @@ public class SimulatorManager : MonoBehaviour
 
             velocities[i] += acceleration * Time.fixedDeltaTime;
             stars[i].transform.position += (Vector3)velocities[i] * Time.fixedDeltaTime;
+            UpdateExtremePositions(stars[i].transform.position);
         }
 
     }
 
+    private int GetCellHash(Vector2 gridCoordinates)
+    {
+        return GetCellHash((int)gridCoordinates.x, (int)gridCoordinates.y);
+    }
+
+    private int GetCellHash(int cellX, int cellY)
+    {
+        return cellX + cellY * gridSubdivisions;
+    }
+
+    private Vector2 CalculateGridCoordinates(Vector2 worldposition)
+    {
+        float universeWidth = extremeX.y - extremeX.x;
+        float universeHeight = extremeY.y - extremeY.x;
+        Vector2 universeSize = new Vector2(universeWidth, universeHeight);
+        Vector2 cellSize = universeSize / gridSubdivisions;
+
+        int cellX = (int)(universeSize.x / worldposition.x);
+        int cellY = (int)(universeSize.y / worldposition.y);
+
+        return new Vector2(cellX, cellY);
+    }
+
+    private Vector2 GetCellGridCoordinates(int cellHash)
+    {
+        int cellY = Mathf.FloorToInt(cellHash / gridSubdivisions);
+        int cellX = cellHash - cellY;
+        return new Vector2(cellX, cellY);
+    }
+
+    private int?[] GetAdjacentCellHashes(Vector2 gridCoordinates)
+    {
+        return GetAdjacentCellHashes(GetCellHash(gridCoordinates));
+    }
+
+    private int?[] GetAdjacentCellHashes(int cellHash)
+    {
+        const int MAX_NEIGHBORS = 9;
+        // In a 2 dimensional grid, a cell can have up to 9 neighbors including itself
+        // 0 1 2 
+        // 3 4 5
+        // 6 7 8
+        int?[] neighbors = new int?[MAX_NEIGHBORS];
+        Vector2 gridCoordinates = GetCellGridCoordinates(cellHash);
+        int index = 0;
+
+        // Shift through the 3 rows and columns
+        for (int i = -1; i <= 1; i++)
+        {
+            if (gridCoordinates.y == 0 && i == -1)
+            {
+                // Prevent top row cells from attempting to find neighbors above them
+                continue;
+            }
+
+            if (gridCoordinates.y == gridSubdivisions - 1 && i == 1)
+            {
+                // Prevent bottom row cells from attempting to find neigbors below them
+                continue;
+            }
+
+            for (int j = -1; j <= 1; j++)
+            {
+                if (gridCoordinates.x == 0  && j == -1)
+                {
+                    // Prevent left column cells from attempting to find neigbors left of them
+                    continue;
+                }
+
+                if (gridCoordinates.x == gridSubdivisions - 1 && j == 1)
+                {
+                    // Prevent right column cells from attempting to find neigbors right of them
+                    continue;
+                }
+
+                neighbors[index] = cellHash + gridSubdivisions * i + j;
+                index++;
+            }
+        }
+
+        return neighbors;
+    }
+
+    private void UpdateExtremePositions(Vector2 position)
+    {
+        if (position.x < extremeX.x)
+        {
+            extremeX.x = position.x;
+        }
+
+        if (position.x > extremeX.y)
+        {
+            extremeX.y = position.x;
+        }
+
+        if (position.y < extremeY.x)
+        {
+            extremeY.x = position.y;
+        }
+
+        if (position.y > extremeY.y)
+        {
+            extremeY.y = position.y;
+        }
+    }
+
     private void Collide(int i, int j)
     {
-
-        if (masses[i] < masses[j])
-        {
-            int temp = i;
-            i = j;
-            j = temp;
-        }
-
-        float massRatio = masses[i] / masses[j];
-
-        if (massRatio < starSurvivalMassRatio)
-        {
-            Destroy(stars[i]);
-            Destroy(stars[j]);
-        }
-        else
-        {
-            // Transfer mass and preserve kinetic Energy
-            float survivingStarkineticEnergy = 1 / 2 * masses[i] * velocities[i].sqrMagnitude;
-            masses[i] = masses[i] * collisionMassRetention + masses[j] * collisionMassRetention;
-            float destroyedStarKineticEnergy = 1 / 2 * masses[j] * velocities[j].sqrMagnitude;
-            float newKineticEnergy = survivingStarkineticEnergy + destroyedStarKineticEnergy * collisionMassRetention;
-            float newSpeed = Mathf.Sqrt(2 * newKineticEnergy / masses[i]);
-            velocities[i] = velocities[i].normalized * newSpeed;
-
-            Destroy(stars[j]);
-        }
-
+        Destroy(stars[i]);
+        Destroy(stars[j]);
     }
 }
