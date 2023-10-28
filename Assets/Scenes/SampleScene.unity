@@ -131,7 +131,7 @@ GameObject:
   - component: {fileID: 99999092}
   - component: {fileID: 99999091}
   m_Layer: 0
-  m_Name: SimulatorControls
+  m_Name: SimulationCamera
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -161,12 +161,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 99999090}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 256.1007, y: 113.48821, z: -3.030192}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 255.98471, y: 114.00346, z: -3.0715513}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1406363812}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &519420028
 GameObject:
@@ -438,6 +438,39 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1406363811
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1406363812}
+  m_Layer: 0
+  m_Name: SimulationBrain
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1406363812
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1406363811}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.11600275, y: -0.5152533, z: 0.041359466}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 99999092}
+  - {fileID: 1511229664}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1511229662
 GameObject:
   m_ObjectHideFlags: 0
@@ -449,7 +482,7 @@ GameObject:
   - component: {fileID: 1511229664}
   - component: {fileID: 1511229663}
   m_Layer: 0
-  m_Name: SimulatorManager
+  m_Name: SimulationCore
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -469,14 +502,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   starCount: 1800
   maxSpawnRange: 600
+  despawnDistance: 1200
   cameraSizeOffset: -400
   gravitationalConstant: 5
   gravitationalConstantIncreasePerSecond: 0.025
   maxGravitationConstant: 15
-  massRange: {x: 1, y: 100}
+  massRange: {x: 1000, y: 20000}
   initialSpeedRange: {x: 0, y: 14}
   starPrefab: {fileID: 2139686671206289527, guid: 7b7421ec5f06a454aa4e71d314a5af20, type: 3}
-  gridSubdivisions: 10
+  distanceStretch: 16
+  gridSubdivisions: 12
 --- !u!4 &1511229664
 Transform:
   m_ObjectHideFlags: 0
@@ -485,12 +520,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1511229662}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.11600275, y: -0.5152533, z: 0.041359466}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1406363812}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
@@ -498,6 +533,5 @@ SceneRoots:
   m_Roots:
   - {fileID: 519420032}
   - {fileID: 619394802}
-  - {fileID: 1511229664}
   - {fileID: 1151631068}
-  - {fileID: 99999092}
+  - {fileID: 1406363812}

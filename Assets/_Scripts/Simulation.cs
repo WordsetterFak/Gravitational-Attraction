@@ -2,12 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SimulatorManager : MonoBehaviour
+public class Simulation : MonoBehaviour
 {
-    public static SimulatorManager Instance { get; private set; }
+    public static Simulation Instance { get; private set; }
 
     [SerializeField] private int starCount;
     [SerializeField] private float maxSpawnRange;
+    [SerializeField] private float despawnDistance;
     [SerializeField] private float cameraSizeOffset;
     [SerializeField] private float gravitationalConstant;
     [SerializeField] private float gravitationalConstantIncreasePerSecond;
@@ -15,6 +16,7 @@ public class SimulatorManager : MonoBehaviour
     [SerializeField] private Vector2 massRange;
     [SerializeField] private Vector2 initialSpeedRange;
     [SerializeField] private GameObject starPrefab;
+    [SerializeField] private float distanceStretch;
 
     [SerializeField] private int gridSubdivisions;
     private int cellCount;
@@ -24,8 +26,10 @@ public class SimulatorManager : MonoBehaviour
     private Vector2[] velocities;
     private float[] masses;
 
+    private float despawnDistanceSquared;
+    private float distanceStretchSquared;
+
     private float radius = 1;
-    bool run = false;
 
     private void Awake()
     {
@@ -34,6 +38,8 @@ public class SimulatorManager : MonoBehaviour
 
     private void Start()
     {
+        despawnDistanceSquared = despawnDistance * despawnDistance;
+        distanceStretchSquared = distanceStretch * distanceStretch;
         cellCount = gridSubdivisions * gridSubdivisions;
         stars = new GameObject[starCount];
         velocities = new Vector2[starCount];
@@ -74,13 +80,14 @@ public class SimulatorManager : MonoBehaviour
                 continue;
             }
 
-            GameObject newPlanet = Instantiate(starPrefab);
-            newPlanet.transform.position = initialPosition;
-            stars[i] = newPlanet;
+            GameObject newStar = Instantiate(starPrefab);
+            newStar.transform.position = initialPosition;
+            stars[i] = newStar;
             float initialSpeed = Random.Range(initialSpeedRange.x, initialSpeedRange.y);
             velocities[i] = initialSpeed * Random.insideUnitCircle.normalized;
             masses[i] = Random.Range(massRange.x, massRange.y);
 
+            newStar.GetComponent<StarVisuals>().AssignColor(masses[i]);
             UpdateExtremePositions(initialPosition);
         }
     }
@@ -104,6 +111,14 @@ public class SimulatorManager : MonoBehaviour
             }
 
             Vector2 starLocation = stars[i].transform.position;
+            float distanceFromOriginSquared = starLocation.sqrMagnitude;
+
+            if (distanceFromOriginSquared > despawnDistanceSquared)
+            {
+                Destroy(stars[i]);
+                continue;
+            }
+
             Vector2 gridCoordinates = CalculateGridCoordinates(starLocation);
             int starCellHash = GetCellHash(gridCoordinates);
             starCellHashes[i] = starCellHash;
@@ -160,7 +175,8 @@ public class SimulatorManager : MonoBehaviour
                     }
 
                     float numerator = gravitationalConstant * otherStarMass * thisStarMass;
-                    float gravitationForceMagnitude = numerator / direction.sqrMagnitude;
+                    float denominator = direction.sqrMagnitude * distanceStretchSquared;
+                    float gravitationForceMagnitude = numerator / denominator;
                     Vector2 gravitationalForce = gravitationForceMagnitude * directionNormalized;
 
                     forces[thisStarIndex] += gravitationalForce;
@@ -307,5 +323,10 @@ public class SimulatorManager : MonoBehaviour
     {
         Destroy(stars[i]);
         Destroy(stars[j]);
+    }
+
+    public float GetMassRange()
+    {
+        return massRange.y - massRange.x;
     }
 }

@@ -2,9 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SimulatorControls : MonoBehaviour
+public class SimulationCamera : MonoBehaviour
 {
-    public static SimulatorControls Instance { get; private set; }
+    public static SimulationCamera Instance { get; private set; }
 
     [SerializeField] private float cameraMovementSpeed;
     [SerializeField] [Range(0, .5f)] private float distanceNormalizedMoveTrigger;
