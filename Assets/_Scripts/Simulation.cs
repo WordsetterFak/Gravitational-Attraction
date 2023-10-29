@@ -28,6 +28,7 @@ public class Simulation : MonoBehaviour
 
     private float despawnDistanceSquared;
     private float distanceStretchSquared;
+    private Vector2 universeSize;
 
     private float radius = 1;
 
@@ -94,11 +95,15 @@ public class Simulation : MonoBehaviour
 
     private void SimulationPhysicsStep()
     {
+        // Initialize new grid
+        float universeWidth = extremeX.y - extremeX.x;
+        float universeHeight = extremeY.y - extremeY.x;
+        universeSize = new Vector2(universeWidth, universeHeight);
+        Vector2 gridOrigin = new Vector2(extremeX.x, extremeY.x);
+        SpaceGrid grid = new SpaceGrid(universeSize, gridOrigin, gridSubdivisions, starCount);
+
         // Setup local caches
         Vector2[] forces = new Vector2[starCount];
-        int[,] cellStars = new int[cellCount, starCount];
-        int[] cellStarCount = new int[cellCount];
-        int[] starCellHashes = new int[starCount];
         Vector2[] collisionPairs = new Vector2[starCount];  // Reset previous collisions
         int collisionCount = 0;
 
@@ -119,11 +124,7 @@ public class Simulation : MonoBehaviour
                 continue;
             }
 
-            Vector2 gridCoordinates = CalculateGridCoordinates(starLocation);
-            int starCellHash = GetCellHash(gridCoordinates);
-            starCellHashes[i] = starCellHash;
-            cellStars[starCellHash, cellStarCount[starCellHash]] = i;
-            cellStarCount[starCellHash] += 1;
+            grid.AddStarToGrid(i);
         }
 
         // Calculate gravitational and reaction forces enacted on each planet
@@ -135,10 +136,9 @@ public class Simulation : MonoBehaviour
                 continue;
             }
 
-            Vector2 thisStarPosition = stars[thisStarIndex].transform.position;
+            Vector2 thisStarPosition = GetStarLocation(thisStarIndex);
             float thisStarMass = masses[thisStarIndex];
-            int starCellHash = starCellHashes[thisStarIndex];
-            int?[] adjacentCellHashes = GetAdjacentCellHashes(starCellHash);
+            int?[] adjacentCellHashes = grid.GetAdjacentCellHashesFromStar(thisStarIndex);
 
             int? collisionIndex = null;
 
@@ -152,9 +152,9 @@ public class Simulation : MonoBehaviour
 
                 int cellHash = (int)potentialCellHash;
 
-                for (int j = 0; j < cellStarCount[cellHash]; j++)
+                for (int j = 0; j < grid.GetCellStarCount(cellHash); j++)
                 {
-                    int otherStarIndex = cellStars[cellHash, j];
+                    int otherStarIndex = grid.GetCellStar(cellHash, j);
 
                     if (thisStarIndex == otherStarIndex)
                     {
@@ -162,7 +162,7 @@ public class Simulation : MonoBehaviour
                         continue;
                     }
 
-                    Vector2 otherStarPosition = stars[otherStarIndex].transform.position;
+                    Vector2 otherStarPosition = GetStarLocation(thisStarIndex);
                     float otherStarMass = masses[otherStarIndex];
 
                     Vector2 direction = otherStarPosition - thisStarPosition;
@@ -217,83 +217,9 @@ public class Simulation : MonoBehaviour
 
     }
 
-    private int GetCellHash(Vector2 gridCoordinates)
+    public Vector2 GetStarLocation(int index)
     {
-        return GetCellHash((int)gridCoordinates.x, (int)gridCoordinates.y);
-    }
-
-    private int GetCellHash(int cellX, int cellY)
-    {
-        return cellX + cellY * gridSubdivisions;
-    }
-
-    private Vector2 CalculateGridCoordinates(Vector2 worldposition)
-    {
-        float universeWidth = extremeX.y - extremeX.x;
-        float universeHeight = extremeY.y - extremeY.x;
-        Vector2 universeSize = new Vector2(universeWidth, universeHeight);
-        Vector2 cellSize = universeSize / gridSubdivisions;
-
-        // Consider a new coordinate system, where the origin was moved
-        Vector2 gridOrigin = new Vector2(extremeX.x, extremeY.x);
-        Vector2 gridOriginPosition = worldposition - gridOrigin;
-
-        int cellX = (int)(gridOriginPosition.x / cellSize.x);
-        int cellY = (int)(gridOriginPosition.y / cellSize.y);
-
-        // If given worldposition corresponds to an extreme value
-        // then an incorrect value (gridSubdivisions) is returned
-        cellX = Mathf.Clamp(cellX, 0, gridSubdivisions - 1);
-        cellY = Mathf.Clamp(cellY, 0, gridSubdivisions - 1);
-
-        return new Vector2(cellX, cellY);
-    }
-
-    private Vector2 GetCellGridCoordinates(int cellHash)
-    {
-        int cellY = Mathf.FloorToInt(cellHash / gridSubdivisions);
-        int cellX = cellHash - cellY * gridSubdivisions;
-        return new Vector2(cellX, cellY);
-    }
-
-    private int?[] GetAdjacentCellHashes(Vector2 gridCoordinates)
-    {
-        return GetAdjacentCellHashes(GetCellHash(gridCoordinates));
-    }
-
-    private int?[] GetAdjacentCellHashes(int cellHash)
-    {
-        const int MAX_NEIGHBORS = 9;
-        // In a 2 dimensional grid, a cell can have up to 9 neighbors including itself
-        // 0 1 2 
-        // 3 4 5
-        // 6 7 8
-        int?[] neighbors = new int?[MAX_NEIGHBORS];
-        Vector2 gridCoordinates = GetCellGridCoordinates(cellHash);
-        int index = 0;
-
-        // Shift through the 3 rows and columns
-        for (int row = -1; row <= 1; row++)
-        {
-
-            for (int column = -1; column <= 1; column++)
-            {
-                Vector2 displacement = new Vector2(row, column);
-                Vector2 neighborGridCoordinates = gridCoordinates + displacement;
-
-                bool rowExists = neighborGridCoordinates.x >= 0 && neighborGridCoordinates.x < gridSubdivisions;
-                bool columnExists = neighborGridCoordinates.y >= 0 && neighborGridCoordinates.y < gridSubdivisions;
-
-                if (rowExists && columnExists)
-                {
-                    neighbors[index] = GetCellHash(neighborGridCoordinates);
-                }
-
-                index++;
-            }
-        }
-
-        return neighbors;
+        return stars[index].transform.position;
     }
 
     private void UpdateExtremePositions(Vector2 position)
