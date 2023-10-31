@@ -111,8 +111,8 @@ public class Simulation : MonoBehaviour
             }
 
             GameObject newStar = Instantiate(starPrefab);
-            SetStarPosition(i, initialPosition);
             stars[i] = newStar;
+            SetStarPosition(i, initialPosition);
 
             float initialSpeed = Random.Range(initialSpeedRange.x, initialSpeedRange.y);
             SetStarVelocity(i, initialSpeed * Random.insideUnitCircle.normalized);
@@ -170,9 +170,11 @@ public class Simulation : MonoBehaviour
 
             foreach (int? potentialCellHash in adjacentCellHashes)
             {
+                // Iterate over every neighboring cell
+
                 if (potentialCellHash == null)
                 {
-                    // This neighbor does not exist
+                    // This neighbor does not exist (outside the grid)
                     continue;
                 }
 
@@ -180,6 +182,7 @@ public class Simulation : MonoBehaviour
 
                 for (int j = 0; j < grid.GetCellStarCount(cellHash); j++)
                 {
+                    // Iterate over all stars in given neighbor cell
                     int otherStarIndex = grid.GetCellStar(cellHash, j);
 
                     if (thisStarIndex == otherStarIndex)
