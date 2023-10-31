@@ -175,7 +175,7 @@ public class Simulation : MonoBehaviour
         }
 
         // Calculate gravitational and reaction forces enacted on each planet
-        for (int thisStarIndex = 0; thisStarIndex < stars.Length; thisStarIndex++)
+        for (int thisStarIndex = 0; thisStarIndex < starCount; thisStarIndex++)
         {
             if (stars[thisStarIndex] == null)
             {
@@ -185,56 +185,35 @@ public class Simulation : MonoBehaviour
 
             Vector2 thisStarPosition = GetStarPosition(thisStarIndex);
             float thisStarMass = GetStarMass(thisStarIndex);
-            int?[] adjacentCellHashes = grid.GetAdjacentCellHashesFromStar(thisStarIndex);
 
             int? collisionIndex = null;
 
-            foreach (int? potentialCellHash in adjacentCellHashes)
+            foreach(int otherStarIndex in grid.GetNeighboringStars(thisStarIndex))
             {
-                // Iterate over every neighboring cell
+                if (otherStarIndex == thisStarIndex) { continue; }
 
-                if (potentialCellHash == null)
+                Vector2 otherStarPosition = GetStarPosition(otherStarIndex);
+                float otherStarMass = GetStarMass(otherStarIndex);
+
+                Vector2 direction = otherStarPosition - thisStarPosition;
+                Vector2 directionNormalized = direction.normalized;
+
+                float radiusSum = GetStarRadius(thisStarIndex) + GetStarRadius(otherStarIndex);
+                float radiusSumSquared = radiusSum * radiusSum;
+
+                if (direction.sqrMagnitude <= radiusSumSquared)
                 {
-                    // This neighbor does not exist (outside the grid)
-                    continue;
+                    collisionIndex = otherStarIndex;
+                    break;
                 }
 
-                int cellHash = (int)potentialCellHash;
+                float numerator = gravitationalConstant * otherStarMass * thisStarMass;
+                float denominator = direction.sqrMagnitude * distanceStretchSquared;
+                float gravitationForceMagnitude = numerator / denominator;
+                Vector2 gravitationalForce = gravitationForceMagnitude * directionNormalized;
 
-                for (int j = 0; j < grid.GetCellStarCount(cellHash); j++)
-                {
-                    // Iterate over all stars in given neighbor cell
-                    int otherStarIndex = grid.GetCellStar(cellHash, j);
-
-                    if (thisStarIndex == otherStarIndex)
-                    {
-                        // Prevent star interacting with itself
-                        continue;
-                    }
-                    
-                    Vector2 otherStarPosition = GetStarPosition(otherStarIndex);
-                    float otherStarMass = GetStarMass(otherStarIndex);
-
-                    Vector2 direction = otherStarPosition - thisStarPosition;
-                    Vector2 directionNormalized = direction.normalized;
-
-                    float radiusSum = GetStarRadius(thisStarIndex) + GetStarRadius(otherStarIndex);
-                    float radiusSumSquared = radiusSum * radiusSum;
-
-                    if (direction.sqrMagnitude <= radiusSumSquared)
-                    {
-                        collisionIndex = otherStarIndex;
-                        break;
-                    }
-
-                    float numerator = gravitationalConstant * otherStarMass * thisStarMass;
-                    float denominator = direction.sqrMagnitude * distanceStretchSquared;
-                    float gravitationForceMagnitude = numerator / denominator;
-                    Vector2 gravitationalForce = gravitationForceMagnitude * directionNormalized;
-
-                    forces[thisStarIndex] += gravitationalForce;
-                    forces[otherStarIndex] -= gravitationalForce;  // Newton's 3rd Law 
-                }
+                forces[thisStarIndex] += gravitationalForce;
+                forces[otherStarIndex] -= gravitationalForce;  // Newton's 3rd Law 
             }
 
             if (collisionIndex != null)

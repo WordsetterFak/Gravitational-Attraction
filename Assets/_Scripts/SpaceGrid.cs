@@ -34,18 +34,52 @@ public class SpaceGrid
         cellStarCount[starCellHash] += 1;
     }
 
-    public int?[] GetAdjacentCellHashesFromStar(int starIndex)
+    public int[] GetNeighboringStars(int starIndex)
+    {
+        int neighborCount = 0;
+
+        int?[] neighboringCellHashes = GetAdjacentCellHashesFromStar(starIndex);
+
+        foreach (int? potentialCellHash in neighboringCellHashes)
+        {
+            if (potentialCellHash == null) { continue; }
+
+            int cellHash = (int)potentialCellHash;
+            neighborCount += cellStarCount[cellHash];
+        }
+
+        int[] neighboringStars = new int[neighborCount];
+        int currentIndex = 0;
+
+        foreach (int? potentialCellHash in neighboringCellHashes)
+        {
+            if (potentialCellHash == null) { continue; }
+
+            int cellHash = (int)potentialCellHash;
+
+            for (int i = 0; i < cellStarCount[cellHash]; i++)
+            {
+                neighboringStars[currentIndex] = cellStars[cellHash, i];
+                currentIndex++;
+            }
+
+        }
+
+        return neighboringStars;
+    }
+
+    private int?[] GetAdjacentCellHashesFromStar(int starIndex)
     {
         int starCellHash = starCellHashes[starIndex];
         return GetAdjacentCellHashes(starCellHash);
     }
     
-    public int GetCellStarCount(int cellHash)
+    private int GetCellStarCount(int cellHash)
     {
         return cellStarCount[cellHash];
     }
 
-    public int GetCellStar(int cellHash, int starIndex)
+    private int GetCellStar(int cellHash, int starIndex)
     {
         return cellStars[cellHash, starIndex];
     }
