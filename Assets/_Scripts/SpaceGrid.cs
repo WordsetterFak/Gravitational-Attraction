@@ -6,7 +6,6 @@ public class SpaceGrid
 {
     private int gridSubdivisions;
     private int cellCount;
-    private Vector2 universeSize;
     private Vector2 cellSize;
     private Vector2 gridOrigin;
     private int[,] cellStars;
@@ -15,7 +14,6 @@ public class SpaceGrid
 
     public SpaceGrid(Vector2 universeSize, Vector2 gridOrigin, int gridSubdivisions, int starCount)
     {
-        this.universeSize = universeSize;
         this.gridOrigin = gridOrigin;
         this.gridSubdivisions = gridSubdivisions;
         cellCount = gridSubdivisions * gridSubdivisions;
@@ -28,7 +26,7 @@ public class SpaceGrid
 
     public void AddStarToGrid(int starIndex)
     {
-        Vector2 starLocation = Simulation.Instance.GetStarLocation(starIndex);
+        Vector2 starLocation = Simulation.Instance.GetStarPosition(starIndex);
         Vector2 gridCoordinates = CalculateGridCoordinates(starLocation);
         int starCellHash = GetCellHash(gridCoordinates);
         starCellHashes[starIndex] = starCellHash;

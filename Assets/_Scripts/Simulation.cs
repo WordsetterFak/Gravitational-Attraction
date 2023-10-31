@@ -52,11 +52,40 @@ public class Simulation : MonoBehaviour
 
     private void FixedUpdate()
     {
+        UpdateUniverseSize();
         SimulationPhysicsStep();
+        UpdateGravitationalConstant();
+    }
 
-        float gravitationalConstantIncrease = gravitationalConstantIncreasePerSecond * Time.fixedDeltaTime;
-        float newGravitationalConstant = gravitationalConstant + gravitationalConstantIncrease;
-        gravitationalConstant = Mathf.Clamp(newGravitationalConstant, -maxGravitationConstant, maxGravitationConstant);
+    public float GetStarMass(int index)
+    {
+        return masses[index];
+    }
+
+    public Vector2 GetStarPosition(int index)
+    {
+        return stars[index].transform.position;
+    }
+
+    public Vector2 GetStarVelocity(int index)
+    {
+        return velocities[index];
+    }
+
+    private void SetStarPosition(int index, Vector2 position)
+    {
+        stars[index].transform.position = position;
+        UpdateExtremePositions(position);
+    }
+
+    private void SetStarMass(int index, float mass)
+    {
+        masses[index] = mass;
+    }
+
+    private void SetStarVelocity(int index, Vector2 velocity)
+    {
+        velocities[index] = velocity;
     }
 
     private void SpawnStars()
@@ -68,7 +97,7 @@ public class Simulation : MonoBehaviour
 
             for (int j = 0; j < i; j++)
             {
-                if ((initialPosition - (Vector2)stars[j].transform.position).magnitude <= radius)
+                if ((initialPosition - GetStarPosition(j)).magnitude <= radius)
                 {
                     overlap = true;
                     break;
@@ -82,24 +111,22 @@ public class Simulation : MonoBehaviour
             }
 
             GameObject newStar = Instantiate(starPrefab);
-            newStar.transform.position = initialPosition;
+            SetStarPosition(i, initialPosition);
             stars[i] = newStar;
+
             float initialSpeed = Random.Range(initialSpeedRange.x, initialSpeedRange.y);
-            velocities[i] = initialSpeed * Random.insideUnitCircle.normalized;
-            masses[i] = Random.Range(massRange.x, massRange.y);
+            SetStarVelocity(i, initialSpeed * Random.insideUnitCircle.normalized);
+
+            SetStarMass(i, Random.Range(massRange.x, massRange.y));
 
             newStar.GetComponent<StarVisuals>().AssignColor(masses[i]);
-            UpdateExtremePositions(initialPosition);
         }
     }
 
     private void SimulationPhysicsStep()
     {
         // Initialize new grid
-        float universeWidth = extremeX.y - extremeX.x;
-        float universeHeight = extremeY.y - extremeY.x;
-        universeSize = new Vector2(universeWidth, universeHeight);
-        Vector2 gridOrigin = new Vector2(extremeX.x, extremeY.x);
+        Vector2 gridOrigin = CalculateGridOrigin();
         SpaceGrid grid = new SpaceGrid(universeSize, gridOrigin, gridSubdivisions, starCount);
 
         // Setup local caches
@@ -115,12 +142,11 @@ public class Simulation : MonoBehaviour
                 continue;
             }
 
-            Vector2 starLocation = stars[i].transform.position;
-            float distanceFromOriginSquared = starLocation.sqrMagnitude;
+            float distanceFromOriginSquared = GetStarPosition(i).sqrMagnitude;
 
             if (distanceFromOriginSquared > despawnDistanceSquared)
             {
-                Destroy(stars[i]);
+                DestroyStar(i);
                 continue;
             }
 
@@ -136,8 +162,8 @@ public class Simulation : MonoBehaviour
                 continue;
             }
 
-            Vector2 thisStarPosition = GetStarLocation(thisStarIndex);
-            float thisStarMass = masses[thisStarIndex];
+            Vector2 thisStarPosition = GetStarPosition(thisStarIndex);
+            float thisStarMass = GetStarMass(thisStarIndex);
             int?[] adjacentCellHashes = grid.GetAdjacentCellHashesFromStar(thisStarIndex);
 
             int? collisionIndex = null;
@@ -161,9 +187,9 @@ public class Simulation : MonoBehaviour
                         // Prevent star interacting with itself
                         continue;
                     }
-
-                    Vector2 otherStarPosition = GetStarLocation(thisStarIndex);
-                    float otherStarMass = masses[otherStarIndex];
+                    
+                    Vector2 otherStarPosition = GetStarPosition(otherStarIndex);
+                    float otherStarMass = GetStarMass(otherStarIndex);
 
                     Vector2 direction = otherStarPosition - thisStarPosition;
                     Vector2 directionNormalized = direction.normalized;
@@ -208,18 +234,33 @@ public class Simulation : MonoBehaviour
                 continue;
             }
 
-            Vector2 acceleration = forces[i] / masses[i];
-
-            velocities[i] += acceleration * Time.fixedDeltaTime;
-            stars[i].transform.position += (Vector3)velocities[i] * Time.fixedDeltaTime;
-            UpdateExtremePositions(stars[i].transform.position);
+            Vector2 acceleration = forces[i] / GetStarMass(i);
+            Vector2 velocity = GetStarVelocity(i) + acceleration * Time.fixedDeltaTime;
+            Vector2 position = GetStarPosition(i) + velocity * Time.fixedDeltaTime;
+            
+            SetStarVelocity(i, velocity);
+            SetStarPosition(i, position);
         }
 
     }
 
-    public Vector2 GetStarLocation(int index)
+    private void UpdateUniverseSize()
     {
-        return stars[index].transform.position;
+        float universeWidth = extremeX.y - extremeX.x;
+        float universeHeight = extremeY.y - extremeY.x;
+        universeSize = new Vector2(universeWidth, universeHeight);
+    }
+
+    private void UpdateGravitationalConstant()
+    {
+        float gravitationalConstantIncrease = gravitationalConstantIncreasePerSecond * Time.fixedDeltaTime;
+        float newGravitationalConstant = gravitationalConstant + gravitationalConstantIncrease;
+        gravitationalConstant = Mathf.Clamp(newGravitationalConstant, -maxGravitationConstant, maxGravitationConstant);
+    }
+
+    private Vector2 CalculateGridOrigin()
+    {
+        return new Vector2(extremeX.x, extremeY.x);
     }
 
     private void UpdateExtremePositions(Vector2 position)
@@ -247,8 +288,13 @@ public class Simulation : MonoBehaviour
 
     private void Collide(int i, int j)
     {
-        Destroy(stars[i]);
-        Destroy(stars[j]);
+        DestroyStar(i);
+        DestroyStar(j);
+    }
+
+    private void DestroyStar(int index)
+    {
+        Destroy(stars[index]);
     }
 
     public float GetMassRange()
