@@ -8,6 +8,13 @@ public class StarVisuals : MonoBehaviour
     [SerializeField] private Color[] starColors;
     [SerializeField] private Material originalMaterial;
 
+    private Light2D lightShader;
+
+    private void Awake()
+    {
+        lightShader = GetComponent<Light2D>();
+    }
+
     public void AssignColor(float mass)
     {
         float massRange = Simulation.Instance.GetMassRange();
@@ -19,7 +26,15 @@ public class StarVisuals : MonoBehaviour
         Material material = new Material(originalMaterial);
         material.color = color;
         GetComponent<Renderer>().material = material;
-        GetComponent<Light2D>().color = color;
+        lightShader.color = color;
 
+    }
+
+    public void AssignRadius(float radius)
+    {
+        transform.localScale *= radius;
+        lightShader.pointLightInnerRadius *= radius;
+        lightShader.pointLightOuterRadius *= radius;
+        lightShader.intensity *= radius;
     }
 }

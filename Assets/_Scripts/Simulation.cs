@@ -15,6 +15,7 @@ public class Simulation : MonoBehaviour
     [SerializeField] private float maxGravitationConstant;
     [SerializeField] private Vector2 massRange;
     [SerializeField] private Vector2 initialSpeedRange;
+    [SerializeField] private Vector2 radiusRange;
     [SerializeField] private GameObject starPrefab;
     [SerializeField] private float distanceStretch;
 
@@ -25,12 +26,11 @@ public class Simulation : MonoBehaviour
     private GameObject[] stars;
     private Vector2[] velocities;
     private float[] masses;
+    private float[] radiuses;
 
     private float despawnDistanceSquared;
     private float distanceStretchSquared;
     private Vector2 universeSize;
-
-    private float radius = 1;
 
     private void Awake()
     {
@@ -45,6 +45,7 @@ public class Simulation : MonoBehaviour
         stars = new GameObject[starCount];
         velocities = new Vector2[starCount];
         masses = new float[starCount];
+        radiuses = new float[starCount];
 
         SpawnStars();
         Camera.main.orthographicSize = maxSpawnRange + cameraSizeOffset;
@@ -72,6 +73,11 @@ public class Simulation : MonoBehaviour
         return velocities[index];
     }
 
+    public float GetStarRadius(int index)
+    {
+        return radiuses[index];
+    }
+
     private void SetStarPosition(int index, Vector2 position)
     {
         stars[index].transform.position = position;
@@ -88,6 +94,11 @@ public class Simulation : MonoBehaviour
         velocities[index] = velocity;
     }
 
+    private void SetStarRadius(int index, float radius)
+    {
+        radiuses[index] = radius;
+    }
+
     private void SpawnStars()
     {
         for (int i = 0; i < starCount; i++)
@@ -95,9 +106,14 @@ public class Simulation : MonoBehaviour
             Vector2 initialPosition = maxSpawnRange * Random.insideUnitCircle;
             bool overlap = false;
 
+            float radius = Random.Range(radiusRange.x, radiusRange.y);
+
             for (int j = 0; j < i; j++)
             {
-                if ((initialPosition - GetStarPosition(j)).magnitude <= radius)
+                float radiusSum = GetStarRadius(j) + radius;
+                float radiusSumSquared = radiusSum * radiusSum;
+
+                if ((initialPosition - GetStarPosition(j)).sqrMagnitude <= radiusSumSquared)
                 {
                     overlap = true;
                     break;
@@ -117,9 +133,14 @@ public class Simulation : MonoBehaviour
             float initialSpeed = Random.Range(initialSpeedRange.x, initialSpeedRange.y);
             SetStarVelocity(i, initialSpeed * Random.insideUnitCircle.normalized);
 
-            SetStarMass(i, Random.Range(massRange.x, massRange.y));
+            float mass = Random.Range(massRange.x, massRange.y);
+            SetStarMass(i, mass);
 
-            newStar.GetComponent<StarVisuals>().AssignColor(masses[i]);
+            SetStarRadius(i, radius);
+
+            StarVisuals starVisuals = newStar.GetComponent<StarVisuals>();
+            starVisuals.AssignColor(mass);
+            starVisuals.AssignRadius(radius);
         }
     }
 
@@ -197,7 +218,10 @@ public class Simulation : MonoBehaviour
                     Vector2 direction = otherStarPosition - thisStarPosition;
                     Vector2 directionNormalized = direction.normalized;
 
-                    if (direction.magnitude <= radius)
+                    float radiusSum = GetStarRadius(thisStarIndex) + GetStarRadius(otherStarIndex);
+                    float radiusSumSquared = radiusSum * radiusSum;
+
+                    if (direction.sqrMagnitude <= radiusSumSquared)
                     {
                         collisionIndex = otherStarIndex;
                         break;

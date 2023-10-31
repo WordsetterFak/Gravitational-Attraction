@@ -509,6 +509,7 @@ MonoBehaviour:
   maxGravitationConstant: 15
   massRange: {x: 1, y: 100}
   initialSpeedRange: {x: 0, y: 5}
+  radiusRange: {x: 1, y: 2}
   starPrefab: {fileID: 2139686671206289527, guid: 7b7421ec5f06a454aa4e71d314a5af20, type: 3}
   distanceStretch: 1
   gridSubdivisions: 12
