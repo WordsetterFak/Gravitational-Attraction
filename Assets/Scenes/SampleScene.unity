@@ -504,13 +504,13 @@ MonoBehaviour:
   maxSpawnRange: 600
   despawnDistance: 1200
   cameraSizeOffset: -400
-  gravitationalConstant: 5
+  gravitationalConstant: 9
   gravitationalConstantIncreasePerSecond: 0.025
   maxGravitationConstant: 15
-  massRange: {x: 1000, y: 20000}
-  initialSpeedRange: {x: 0, y: 14}
+  massRange: {x: 1, y: 100}
+  initialSpeedRange: {x: 0, y: 5}
   starPrefab: {fileID: 2139686671206289527, guid: 7b7421ec5f06a454aa4e71d314a5af20, type: 3}
-  distanceStretch: 16
+  distanceStretch: 1
   gridSubdivisions: 12
 --- !u!4 &1511229664
 Transform:
